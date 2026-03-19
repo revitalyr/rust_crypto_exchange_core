@@ -1,0 +1,27 @@
+[package]
+name = "crypto-exchange-benchmarks"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+crypto-exchange-common = { path = "../common" }
+crypto-exchange-orderbook = { path = "../orderbook" }
+crypto-exchange-matching-engine = { path = "../matching_engine" }
+crypto-exchange-risk-engine = { path = "../risk_engine" }
+crypto-exchange-accounts = { path = "../accounts" }
+tokio.workspace = true
+criterion.workspace = true
+proptest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+rayon.workspace = true
+
+[[bench]]
+name = "exchange_integration_bench"
+harness = false

@@ -1,0 +1,25 @@
+[package]
+name = "crypto-exchange-orderbook"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+crypto-exchange-common = { path = "../common" }
+crossbeam.workspace = true
+parking_lot.workspace = true
+dashmap.workspace = true
+serde.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+proptest.workspace = true
+
+[[bench]]
+name = "orderbook_bench"
+harness = false

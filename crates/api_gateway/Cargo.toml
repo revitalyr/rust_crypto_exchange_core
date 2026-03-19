@@ -1,0 +1,28 @@
+[package]
+name = "crypto-exchange-api-gateway"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+crypto-exchange-common = { path = "../common" }
+crypto-exchange-matching-engine = { path = "../matching_engine" }
+crypto-exchange-orderbook = { path = "../orderbook" }
+crypto-exchange-accounts = { path = "../accounts" }
+crypto-exchange-risk-engine = { path = "../risk_engine" }
+crypto-exchange-transport = { path = "../transport" }
+tokio.workspace = true
+axum.workspace = true
+tokio-tungstenite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tokio-test = "0.4"
+tower-http = { version = "0.6", features = ["cors"] }
