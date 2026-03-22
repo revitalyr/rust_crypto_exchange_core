@@ -33,11 +33,9 @@ impl MarketOrderValidator {
     /// Validates a market order
     pub fn validate(&self, order: &Order) -> ExchangeResult<()> {
         // Check order type
-        if order.order_type != OrderType::Market {
-            return Err(ExchangeError::invalid_order(
-                "Expected market order",
-            ));
-        }
+        let OrderType::Market = order.order_type else {
+            return Err(ExchangeError::invalid_order("Expected market order"));
+        };
 
         // Market orders should not have a price
         if order.price.is_some() {
@@ -108,11 +106,9 @@ pub struct MarketOrderContext {
 impl MarketOrderContext {
     /// Creates a new market order context
     pub fn new(order: &Order) -> ExchangeResult<Self> {
-        if order.order_type != OrderType::Market {
-            return Err(ExchangeError::invalid_order(
-                "Expected market order",
-            ));
-        }
+        let OrderType::Market = order.order_type else {
+            return Err(ExchangeError::invalid_order("Expected market order"));
+        };
 
         if order.price.is_some() {
             return Err(ExchangeError::invalid_order(
@@ -415,114 +411,109 @@ impl MarketExecutionPlan {
     }
 }
 
-/// Market order utilities
-pub struct MarketOrderUtils;
+/// Calculates the maximum quantity that can be filled at given levels
+pub fn calculate_max_fillable_quantity(
+    levels: &[(Price, u64)],
+    order_quantity: u64,
+    side: OrderSide,
+) -> u64 {
+    let mut remaining = order_quantity;
+    let mut filled = 0u64;
 
-impl MarketOrderUtils {
-    /// Calculates the maximum quantity that can be filled at given levels
-    pub fn calculate_max_fillable_quantity(
-        levels: &[(Price, u64)],
-        order_quantity: u64,
-        side: OrderSide,
-    ) -> u64 {
-        let mut remaining = order_quantity;
-        let mut filled = 0u64;
+    let sorted_levels = if side == OrderSide::Buy {
+        // For buys, use ascending prices (best to worst)
+        let mut sorted = levels.to_vec();
+        sorted.sort_by_key(|(price, _)| price.value());
+        sorted
+    } else {
+        // For sells, use descending prices (best to worst)
+        let mut sorted = levels.to_vec();
+        sorted.sort_by_key(|(price, _)| std::cmp::Reverse(price.value()));
+        sorted
+    };
 
-        let sorted_levels = if side == OrderSide::Buy {
-            // For buys, use ascending prices (best to worst)
-            let mut sorted = levels.to_vec();
-            sorted.sort_by_key(|(price, _)| price.value());
-            sorted
-        } else {
-            // For sells, use descending prices (best to worst)
-            let mut sorted = levels.to_vec();
-            sorted.sort_by_key(|(price, _)| std::cmp::Reverse(price.value()));
-            sorted
-        };
-
-        for (price, quantity) in sorted_levels {
-            if remaining == 0 {
-                break;
-            }
-
-            let fill_quantity = remaining.min(*quantity);
-            filled += fill_quantity;
-            remaining -= fill_quantity;
+    for (_price, quantity) in sorted_levels {
+        if remaining == 0 {
+            break;
         }
 
-        filled
+        let fill_quantity = remaining.min(quantity);
+        filled += fill_quantity;
+        remaining -= fill_quantity;
     }
 
-    /// Creates an execution plan for a market order
-    pub fn create_execution_plan(
-        order_id: u64,
-        side: OrderSide,
-        quantity: u64,
-        levels: &[(Price, u64)],
-    ) -> ExchangeResult<MarketExecutionPlan> {
-        let sorted_levels = if side == OrderSide::Buy {
-            // For buys, use ascending prices
-            let mut sorted = levels.to_vec();
-            sorted.sort_by_key(|(price, _)| price.value());
-            sorted
-        } else {
-            // For sells, use descending prices
-            let mut sorted = levels.to_vec();
-            sorted.sort_by_key(|(price, _)| std::cmp::Reverse(price.value()));
-            sorted
-        };
+    filled
+}
 
-        let mut remaining = quantity;
-        let mut execution_levels = Vec::new();
+/// Creates an execution plan for a market order
+pub fn create_execution_plan(
+    order_id: u64,
+    side: OrderSide,
+    quantity: u64,
+    levels: &[(Price, u64)],
+) -> ExchangeResult<MarketExecutionPlan> {
+    let sorted_levels = if side == OrderSide::Buy {
+        // For buys, use ascending prices
+        let mut sorted = levels.to_vec();
+        sorted.sort_by_key(|(price, _)| price.value());
+        sorted
+    } else {
+        // For sells, use descending prices
+        let mut sorted = levels.to_vec();
+        sorted.sort_by_key(|(price, _)| std::cmp::Reverse(price.value()));
+        sorted
+    };
 
-        for (price, available_quantity) in sorted_levels {
-            if remaining == 0 {
-                break;
-            }
+    let mut remaining = quantity;
+    let mut execution_levels = Vec::new();
 
-            let execute_quantity = remaining.min(*available_quantity);
-            execution_levels.push(MarketExecutionLevel::new(
-                *price,
-                *available_quantity,
-                execute_quantity,
-            ));
-
-            remaining -= execute_quantity;
+    for (price, available_quantity) in sorted_levels {
+        if remaining == 0 {
+            break;
         }
 
-        MarketExecutionPlan::new(order_id, side, quantity, execution_levels)
+        let execute_quantity = remaining.min(available_quantity);
+        execution_levels.push(MarketExecutionLevel::new(
+            price,
+            available_quantity,
+            execute_quantity,
+        ));
+
+        remaining -= execute_quantity;
     }
 
-    /// Calculates market impact
-    pub fn calculate_market_impact(
-        mid_price: Price,
-        execution_price: Price,
-        side: OrderSide,
-    ) -> u32 {
-        let mid_value = mid_price.value();
-        let exec_value = execution_price.value();
+    MarketExecutionPlan::new(order_id, side, quantity, execution_levels)
+}
 
-        let impact_bps = match side {
-            OrderSide::Buy => {
-                // For buys, impact is when execution price > mid price
-                if exec_value > mid_value {
-                    ((exec_value - mid_value) * 10000) / mid_value
-                } else {
-                    0
-                }
-            }
-            OrderSide::Sell => {
-                // For sells, impact is when execution price < mid price
-                if exec_value < mid_value {
-                    ((mid_value - exec_value) * 10000) / mid_value
-                } else {
-                    0
-                }
-            }
-        };
+/// Calculates market impact
+pub fn calculate_market_impact(
+    mid_price: Price,
+    execution_price: Price,
+    side: OrderSide,
+) -> u32 {
+    let mid_value = mid_price.value();
+    let exec_value = execution_price.value();
 
-        impact_bps as u32
-    }
+    let impact_bps = match side {
+        OrderSide::Buy => {
+            // For buys, impact is when execution price > mid price
+            if exec_value > mid_value {
+                ((exec_value - mid_value) * 10000) / mid_value
+            } else {
+                0
+            }
+        }
+        OrderSide::Sell => {
+            // For sells, impact is when execution price < mid price
+            if exec_value < mid_value {
+                ((mid_value - exec_value) * 10000) / mid_value
+            } else {
+                0
+            }
+        }
+    };
+
+    impact_bps as u32
 }
 
 #[cfg(test)]
@@ -652,7 +643,7 @@ mod tests {
             (Price::new(50200), 1000),
         ];
 
-        let plan = MarketOrderUtils::create_execution_plan(
+        let plan = create_execution_plan(
             1,
             OrderSide::Buy,
             1000,
@@ -681,7 +672,7 @@ mod tests {
         ];
 
         // Test max fillable quantity
-        let max_fillable = MarketOrderUtils::calculate_max_fillable_quantity(
+        let max_fillable = calculate_max_fillable_quantity(
             &levels,
             1000,
             OrderSide::Buy,
@@ -689,14 +680,14 @@ mod tests {
         assert_eq!(max_fillable, 800); // 500 + 300
 
         // Test market impact calculation
-        let impact = MarketOrderUtils::calculate_market_impact(
+        let impact = calculate_market_impact(
             Price::new(50100), // Mid price
             Price::new(50200), // Execution price
             OrderSide::Buy,
         );
         assert_eq!(impact, 199); // ~2% impact
 
-        let impact_sell = MarketOrderUtils::calculate_market_impact(
+        let impact_sell = calculate_market_impact(
             Price::new(50100),
             Price::new(50000),
             OrderSide::Sell,

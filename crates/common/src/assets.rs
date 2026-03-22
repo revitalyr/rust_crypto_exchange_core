@@ -1,10 +1,11 @@
 //! Asset definitions and cryptocurrency-specific types.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer, Deserializer, de::Error};
 use std::fmt;
+use std::str::FromStr;
 
 /// Represents different cryptocurrency assets
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Asset {
     /// Bitcoin
     BTC,
@@ -16,6 +17,60 @@ pub enum Asset {
     USDC,
     /// Custom asset
     Custom(&'static str),
+}
+
+/// Serde serialization module for Asset
+pub mod serde_asset {
+    use super::*;
+    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(asset: &Asset, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(asset.symbol())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Asset, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Asset::from_str(&s).map_err(D::Error::custom)
+    }
+}
+
+impl FromStr for Asset {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "BTC" => Ok(Asset::BTC),
+            "ETH" => Ok(Asset::ETH),
+            "USDT" => Ok(Asset::USDT),
+            "USDC" => Ok(Asset::USDC),
+            _ => Ok(Asset::Custom(Box::leak(s.to_string().into_boxed_str()))),
+        }
+    }
+}
+
+impl Serialize for Asset {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.symbol())
+    }
+}
+
+impl<'de> Deserialize<'de> for Asset {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Asset::from_str(&s).map_err(D::Error::custom)
+    }
 }
 
 impl Asset {
@@ -62,7 +117,9 @@ impl fmt::Display for Asset {
 /// Represents a trading pair
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TradingPair {
+    #[serde(with = "serde_asset")]
     pub base: Asset,
+    #[serde(with = "serde_asset")]
     pub quote: Asset,
 }
 

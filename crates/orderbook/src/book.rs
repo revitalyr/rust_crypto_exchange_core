@@ -30,7 +30,7 @@ impl OrderBook {
         let memory_pool = Arc::new(MemoryPool::new(10000));
         Self {
             bids: OrderBookSide::new(true, memory_pool.clone()),
-            asks: OrderBookSide::new(false, memory_pool),
+            asks: OrderBookSide::new(false, memory_pool.clone()),
             memory_pool,
             pair,
             next_sequence: Arc::new(RwLock::new(1)),

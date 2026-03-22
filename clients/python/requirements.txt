@@ -1,0 +1,4 @@
+websockets>=12.0
+asyncio>=3.8.0
+requests>=2.31.0
+toml>=0.10.0

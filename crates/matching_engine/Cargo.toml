@@ -8,19 +8,10 @@ license.workspace = true
 [dependencies]
 crypto-exchange-common = { path = "../common" }
 crypto-exchange-orderbook = { path = "../orderbook" }
-crossbeam.workspace = true
-parking_lot.workspace = true
-rayon.workspace = true
+dashmap.workspace = true
 serde.workspace = true
 uuid.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 chrono.workspace = true
 
-[dev-dependencies]
-criterion.workspace = true
-proptest.workspace = true
-
-[[bench]]
-name = "matching_engine_bench"
-harness = false

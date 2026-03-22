@@ -1,6 +1,7 @@
 //! Order types and related structures.
 
 use crate::{error::ExchangeError, price::Price};
+use crate::types::{OrderId, UserId, Quantity, Timestamp};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -19,6 +20,14 @@ impl OrderSide {
         match self {
             OrderSide::Buy => OrderSide::Sell,
             OrderSide::Sell => OrderSide::Buy,
+        }
+    }
+    
+    /// Returns uppercase string representation
+    pub fn to_uppercase(self) -> String {
+        match self {
+            OrderSide::Buy => "BUY".to_string(),
+            OrderSide::Sell => "SELL".to_string(),
         }
     }
 }
@@ -111,9 +120,9 @@ impl fmt::Display for OrderStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Order {
     /// Unique order identifier
-    pub id: u64,
+    pub id: OrderId,
     /// User ID who placed the order
-    pub user_id: u64,
+    pub user_id: UserId,
     /// Trading pair symbol
     pub pair: String,
     /// Order side (buy/sell)
@@ -123,31 +132,31 @@ pub struct Order {
     /// Order price (None for market orders)
     pub price: Option<Price>,
     /// Order quantity
-    pub quantity: u64,
+    pub quantity: Quantity,
     /// Filled quantity
-    pub filled_quantity: u64,
+    pub filled_quantity: Quantity,
     /// Time in force
     pub time_in_force: TimeInForce,
     /// Order status
     pub status: OrderStatus,
     /// Creation timestamp (nanoseconds since epoch)
-    pub created_at: u64,
+    pub created_at: Timestamp,
     /// Last update timestamp (nanoseconds since epoch)
-    pub updated_at: u64,
+    pub updated_at: Timestamp,
 }
 
 impl Order {
     /// Creates a new order
     pub fn new(
-        id: u64,
-        user_id: u64,
+        id: OrderId,
+        user_id: UserId,
         pair: String,
         side: OrderSide,
         order_type: OrderType,
         price: Option<Price>,
-        quantity: u64,
+        quantity: Quantity,
         time_in_force: TimeInForce,
-        timestamp: u64,
+        timestamp: Timestamp,
     ) -> Self {
         Self {
             id,
@@ -166,7 +175,7 @@ impl Order {
     }
 
     /// Returns the remaining quantity
-    pub fn remaining_quantity(&self) -> u64 {
+    pub fn remaining_quantity(&self) -> Quantity {
         self.quantity - self.filled_quantity
     }
 
@@ -190,10 +199,10 @@ impl Order {
     }
 
     /// Updates the filled quantity
-    pub fn fill(&mut self, quantity: u64, timestamp: u64) -> Result<(), ExchangeError> {
+    pub fn fill(&mut self, quantity: Quantity, timestamp: Timestamp) -> Result<(), ExchangeError> {
         if quantity > self.remaining_quantity() {
             return Err(ExchangeError::invalid_order(
-                "Fill quantity exceeds remaining quantity",
+                crate::types::error_messages::INVALID_QUANTITY,
             ));
         }
 
@@ -210,10 +219,10 @@ impl Order {
     }
 
     /// Cancels the order
-    pub fn cancel(&mut self, reason: &str, timestamp: u64) -> Result<(), ExchangeError> {
+    pub fn cancel(&mut self, _reason: &str, timestamp: Timestamp) -> Result<(), ExchangeError> {
         if matches!(self.status, OrderStatus::Filled | OrderStatus::Cancelled) {
             return Err(ExchangeError::invalid_order(
-                "Cannot cancel filled or already cancelled order",
+                crate::types::error_messages::INVALID_ORDER_STATUS,
             ));
         }
 
@@ -271,13 +280,13 @@ mod tests {
         let order = Order::new(
             1,
             100,
-            "BTC/USDT".to_string(),
+            crate::types::symbols::BTC_USDT.to_string(),
             OrderSide::Buy,
             OrderType::Limit,
-            Some(Price::new(50000)),
+            Some(Price::new(50000_00)),
             1000,
             TimeInForce::GTC,
-            1234567890,
+            1234567890_000_000_000,
         );
 
         assert_eq!(order.id, 1);
@@ -291,22 +300,22 @@ mod tests {
         let mut order = Order::new(
             1,
             100,
-            "BTC/USDT".to_string(),
+            crate::types::symbols::BTC_USDT.to_string(),
             OrderSide::Buy,
             OrderType::Limit,
-            Some(Price::new(50000)),
+            Some(Price::new(50000_00)),
             1000,
             TimeInForce::GTC,
-            1234567890,
+            1234567890_000_000_000,
         );
 
-        order.fill(500, 1234567891).unwrap();
+        order.fill(500, 1234567891_000_000_000).unwrap();
         assert_eq!(order.filled_quantity, 500);
         assert_eq!(order.remaining_quantity(), 500);
         assert_eq!(order.fill_percentage(), 0.5);
         assert_eq!(order.status, OrderStatus::PartiallyFilled);
 
-        order.fill(500, 1234567892).unwrap();
+        order.fill(500, 1234567892_000_000_000).unwrap();
         assert_eq!(order.status, OrderStatus::Filled);
     }
 
@@ -315,13 +324,13 @@ mod tests {
         let valid_order = Order::new(
             1,
             100,
-            "BTC/USDT".to_string(),
+            crate::types::symbols::BTC_USDT.to_string(),
             OrderSide::Buy,
             OrderType::Limit,
-            Some(Price::new(50000)),
+            Some(Price::new(50000_00)),
             1000,
             TimeInForce::GTC,
-            1234567890,
+            1234567890_000_000_000,
         );
 
         assert!(valid_order.validate().is_ok());
@@ -329,13 +338,13 @@ mod tests {
         let invalid_order = Order::new(
             2,
             100,
-            "BTC/USDT".to_string(),
+            crate::types::symbols::BTC_USDT.to_string(),
             OrderSide::Buy,
             OrderType::Limit,
             None, // No price for limit order
             1000,
             TimeInForce::GTC,
-            1234567890,
+            1234567890_000_000_000,
         );
 
         assert!(invalid_order.validate().is_err());

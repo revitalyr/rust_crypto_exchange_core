@@ -4,6 +4,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+// === Core Type Aliases ===
+
 /// Timestamp type (nanoseconds since epoch)
 pub type Timestamp = u64;
 
@@ -21,6 +23,115 @@ pub type Quantity = u64;
 
 /// Sequence number type
 pub type Sequence = u64;
+
+// === Semantic Type Aliases ===
+
+/// Tick size for price levels
+pub type TickSize = u64;
+
+/// Deviation in basis points (0.0001%)
+pub type DeviationBps = u32;
+
+/// Fee rate (as percentage)
+pub type FeeRate = f64;
+
+/// Count of items
+pub type Count = u32;
+
+/// Price value
+pub type PriceValue = u64;
+
+// === Constants Module ===
+pub mod constants {
+    use super::{TickSize, Quantity, DeviationBps, FeeRate, Count};
+    
+    /// Default price decimals for most trading pairs
+    pub const DEFAULT_PRICE_DECIMALS: u8 = 2;
+    
+    /// Default quantity decimals for most assets
+    pub const DEFAULT_QUANTITY_DECIMALS: u8 = 8;
+    
+    /// Default tick size (0.01)
+    pub const DEFAULT_TICK_SIZE: TickSize = 100;
+    
+    /// Default lot size (1 unit)
+    pub const DEFAULT_LOT_SIZE: Quantity = 1;
+    
+    /// Maximum price deviation allowed (1000 bps = 10%)
+    pub const MAX_PRICE_DEVIATION_BPS: DeviationBps = 1000;
+    
+    /// Default maker fee rate (0.1%)
+    pub const DEFAULT_MAKER_FEE_RATE: FeeRate = 0.001;
+    
+    /// Default taker fee rate (0.2%)
+    pub const DEFAULT_TAKER_FEE_RATE: FeeRate = 0.002;
+    
+    /// Maximum order book depth
+    pub const MAX_ORDER_BOOK_DEPTH: Count = 1000;
+    
+    /// Default rate limit per minute
+    pub const DEFAULT_RATE_LIMIT_PER_MINUTE: Count = 1000;
+    
+    /// Maximum users per system
+    pub const MAX_USERS: Count = 1_000_000;
+    
+    /// Maximum orders per user
+    pub const MAX_ORDERS_PER_USER: Count = 10_000;
+}
+
+// === Symbolic Literals Module ===
+pub mod symbols {
+    /// Bitcoin symbol
+    pub const BTC: &str = "BTC";
+    
+    /// Ethereum symbol
+    pub const ETH: &str = "ETH";
+    
+    /// Tether USD symbol
+    pub const USDT: &str = "USDT";
+    
+    /// USD Coin symbol
+    pub const USDC: &str = "USDC";
+    
+    /// BTC/USDT trading pair
+    pub const BTC_USDT: &str = "BTC/USDT";
+    
+    /// ETH/USDT trading pair
+    pub const ETH_USDT: &str = "ETH/USDT";
+    
+    /// ETH/BTC trading pair
+    pub const ETH_BTC: &str = "ETH/BTC";
+}
+
+// === Error Messages Module ===
+pub mod error_messages {
+    /// Insufficient balance error
+    pub const INSUFFICIENT_BALANCE: &str = "Insufficient balance for this operation";
+    
+    /// Invalid order quantity error
+    pub const INVALID_QUANTITY: &str = "Order quantity must be positive and multiple of lot size";
+    
+    /// Invalid price error
+    pub const INVALID_PRICE: &str = "Price must be positive and within allowed deviation";
+    
+    /// Order not found error
+    pub const ORDER_NOT_FOUND: &str = "Order not found";
+    
+    /// Invalid trading pair error
+    pub const INVALID_TRADING_PAIR: &str = "Invalid or unsupported trading pair";
+    
+    /// Risk limit exceeded error
+    pub const RISK_LIMIT_EXCEEDED: &str = "Risk limit exceeded";
+    
+    /// Rate limit exceeded error
+    pub const RATE_LIMIT_EXCEEDED: &str = "Rate limit exceeded";
+    
+    /// Account not found error
+    pub const ACCOUNT_NOT_FOUND: &str = "Account not found";
+    
+    /// Invalid order status error
+    pub const INVALID_ORDER_STATUS: &str = "Invalid order status for this operation";
+}
 
 /// Utility functions for timestamps
 pub mod timestamp {

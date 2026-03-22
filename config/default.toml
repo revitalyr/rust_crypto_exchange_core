@@ -1,0 +1,40 @@
+# Default configuration for crypto exchange clients
+
+[server]
+# WebSocket server URL
+url = "ws://127.0.0.1:8080/ws"
+# Connection timeout in seconds
+timeout = 30
+# Reconnect interval in seconds
+reconnect_interval = 5
+# Maximum reconnection attempts
+max_reconnect_attempts = 10
+
+[client]
+# Client identification
+name = "Desktop Trading Client"
+version = "1.0.0"
+# Auto-reconnect enabled
+auto_reconnect = true
+
+[trading]
+# Default trading pair
+default_pair = "BTC/USDT"
+# Maximum order size
+max_order_size = 1000000
+# Default order timeout in seconds
+order_timeout = 60
+
+[ui]
+# Theme (light, dark, auto)
+theme = "auto"
+# Chart update interval in milliseconds
+chart_update_interval = 1000
+# Maximum chart points
+max_chart_points = 100
+
+[logging]
+# Log level (trace, debug, info, warn, error)
+level = "info"
+# Log file path (optional, console only if not specified)
+# file = "logs/client.log"

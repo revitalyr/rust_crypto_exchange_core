@@ -1,0 +1,9 @@
+[package]
+name = "crypto-exchange-ios-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["Crypto Exchange Team"]
+license = "MIT"
+
+# Note: This is a placeholder for iOS dependencies
+# Actual iOS dependencies are managed via Xcode

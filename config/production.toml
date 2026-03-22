@@ -1,0 +1,26 @@
+# Production configuration for crypto exchange clients
+
+[server]
+url = "wss://api.cryptoexchange.com/ws"
+timeout = 30
+reconnect_interval = 10
+max_reconnect_attempts = 5
+
+[client]
+name = "Production Trading Client"
+version = "1.0.0"
+auto_reconnect = true
+
+[trading]
+default_pair = "BTC/USDT"
+max_order_size = 10000000
+order_timeout = 120
+
+[ui]
+theme = "dark"
+chart_update_interval = 500
+max_chart_points = 200
+
+[logging]
+level = "warn"
+file = "logs/production.log"

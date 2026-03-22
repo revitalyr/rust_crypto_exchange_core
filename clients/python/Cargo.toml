@@ -1,0 +1,18 @@
+[package]
+name = "crypto-exchange-python-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["Crypto Exchange Team"]
+license = "MIT"
+
+[[bin]]
+name = "python-client"
+path = "trading_client.py"
+
+[[bin]]
+name = "python-bot"
+path = "trading_bot.py"
+
+[dependencies]
+# Note: This is a placeholder for Python dependencies
+# Actual Python dependencies are in requirements.txt

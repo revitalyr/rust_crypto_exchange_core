@@ -59,8 +59,12 @@ impl PriceLevels {
 
     /// Gets the best price level
     pub fn best_level(&self) -> Option<*mut PriceLevelNode> {
-        let best_price = *self.best_price.read()?;
-        self.levels.get(&best_price).copied()
+        let best_price = *self.best_price.read();
+        if let Some(price) = best_price {
+            self.levels.get(&price).copied()
+        } else {
+            None
+        }
     }
 
     /// Gets a price level by price

@@ -1,0 +1,9 @@
+[package]
+name = "crypto-exchange-android-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["Crypto Exchange Team"]
+license = "MIT"
+
+# Note: This is a placeholder for Android dependencies
+# Actual Android dependencies are in app/build.gradle

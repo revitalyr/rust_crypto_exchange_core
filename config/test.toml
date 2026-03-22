@@ -1,0 +1,25 @@
+# Test configuration for crypto exchange clients
+
+[server]
+url = "ws://127.0.0.1:8081/ws"
+timeout = 10
+reconnect_interval = 1
+max_reconnect_attempts = 3
+
+[client]
+name = "Test Trading Client"
+version = "1.0.0"
+auto_reconnect = true
+
+[trading]
+default_pair = "BTC/USDT"
+max_order_size = 100000
+order_timeout = 30
+
+[ui]
+theme = "light"
+chart_update_interval = 100
+max_chart_points = 50
+
+[logging]
+level = "debug"

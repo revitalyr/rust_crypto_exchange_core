@@ -1,90 +1,106 @@
 //! Event types for the exchange system.
 
-use crate::{order::Order, trade::Trade, Asset};
-use serde::{Deserialize, Serialize};
+use crate::Asset;
+use crate::types::{UserId, Timestamp};
 use uuid::Uuid;
 
 /// Represents different types of exchange events
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum ExchangeEvent {
     /// Order was placed
     OrderPlaced {
-        order_id: u64,
-        user_id: u64,
+        order_id: crate::types::OrderId,
+        user_id: UserId,
         pair: String,
         side: String,
-        price: Option<u64>,
-        quantity: u64,
-        timestamp: u64,
+        price: Option<crate::types::PriceValue>,
+        quantity: crate::types::Quantity,
+        timestamp: Timestamp,
     },
 
     /// Order was cancelled
     OrderCancelled {
-        order_id: u64,
-        user_id: u64,
+        order_id: crate::types::OrderId,
+        user_id: UserId,
         reason: String,
-        timestamp: u64,
+        timestamp: Timestamp,
     },
 
-    /// Trade was executed
+    /// Trade occurred
     TradeExecuted {
-        trade_id: Uuid,
-        maker_order_id: u64,
-        taker_order_id: u64,
-        price: u64,
-        quantity: u64,
-        maker_user_id: u64,
-        taker_user_id: u64,
+        trade_id: String,
+        maker_order_id: crate::types::OrderId,
+        taker_order_id: crate::types::OrderId,
+        maker_user_id: UserId,
+        taker_user_id: UserId,
         pair: String,
-        timestamp: u64,
+        price: crate::types::PriceValue,
+        quantity: crate::types::Quantity,
+        timestamp: Timestamp,
     },
 
     /// Deposit was confirmed
     DepositConfirmed {
         deposit_id: Uuid,
-        user_id: u64,
+        user_id: UserId,
         asset: Asset,
-        amount: u64,
+        amount: crate::types::Quantity,
         tx_hash: String,
         confirmations: u32,
-        timestamp: u64,
+        timestamp: Timestamp,
     },
 
     /// Withdrawal was processed
     WithdrawalProcessed {
         withdrawal_id: Uuid,
-        user_id: u64,
+        user_id: UserId,
         asset: Asset,
-        amount: u64,
+        amount: crate::types::Quantity,
         address: String,
         tx_hash: String,
-        timestamp: u64,
+        timestamp: Timestamp,
     },
 
-    /// Balance was updated
-    BalanceUpdated {
-        user_id: u64,
+    /// Balance changed
+    BalanceChanged {
+        user_id: UserId,
         asset: Asset,
-        old_balance: u64,
-        new_balance: u64,
-        old_reserved: u64,
-        new_reserved: u64,
-        timestamp: u64,
+        old_balance: crate::types::Balance,
+        new_balance: crate::types::Balance,
+        timestamp: Timestamp,
+    },
+
+    /// Position changed
+    PositionChanged {
+        user_id: UserId,
+        asset: Asset,
+        old_position: i64,
+        new_position: i64,
+        timestamp: Timestamp,
+    },
+
+    /// Risk limit breached
+    RiskLimitBreached {
+        user_id: UserId,
+        limit_type: String,
+        limit_value: crate::types::Quantity,
+        current_value: crate::types::Quantity,
+        timestamp: Timestamp,
     },
 
     /// Account was created
     AccountCreated {
-        user_id: u64,
-        timestamp: u64,
+        user_id: UserId,
+        timestamp: Timestamp,
     },
 
     /// Risk check was performed
     RiskCheckPerformed {
-        user_id: u64,
-        order_id: u64,
+        user_id: UserId,
+        order_id: crate::types::OrderId,
         passed: bool,
         reason: Option<String>,
-        timestamp: u64,
+        timestamp: Timestamp,
     },
 
     /// System status update
@@ -92,20 +108,22 @@ pub enum ExchangeEvent {
         component: String,
         status: String,
         message: Option<String>,
-        timestamp: u64,
+        timestamp: Timestamp,
     },
 }
 
 impl ExchangeEvent {
     /// Returns the timestamp of the event
-    pub fn timestamp(&self) -> u64 {
+    pub fn timestamp(&self) -> Timestamp {
         match self {
             ExchangeEvent::OrderPlaced { timestamp, .. }
             | ExchangeEvent::OrderCancelled { timestamp, .. }
             | ExchangeEvent::TradeExecuted { timestamp, .. }
             | ExchangeEvent::DepositConfirmed { timestamp, .. }
             | ExchangeEvent::WithdrawalProcessed { timestamp, .. }
-            | ExchangeEvent::BalanceUpdated { timestamp, .. }
+            | ExchangeEvent::BalanceChanged { timestamp, .. }
+            | ExchangeEvent::PositionChanged { timestamp, .. }
+            | ExchangeEvent::RiskLimitBreached { timestamp, .. }
             | ExchangeEvent::AccountCreated { timestamp, .. }
             | ExchangeEvent::RiskCheckPerformed { timestamp, .. }
             | ExchangeEvent::SystemStatus { timestamp, .. } => *timestamp,
@@ -120,7 +138,9 @@ impl ExchangeEvent {
             ExchangeEvent::TradeExecuted { .. } => "trade_executed",
             ExchangeEvent::DepositConfirmed { .. } => "deposit_confirmed",
             ExchangeEvent::WithdrawalProcessed { .. } => "withdrawal_processed",
-            ExchangeEvent::BalanceUpdated { .. } => "balance_updated",
+            ExchangeEvent::BalanceChanged { .. } => "balance_changed",
+            ExchangeEvent::PositionChanged { .. } => "position_changed",
+            ExchangeEvent::RiskLimitBreached { .. } => "risk_limit_breached",
             ExchangeEvent::AccountCreated { .. } => "account_created",
             ExchangeEvent::RiskCheckPerformed { .. } => "risk_check_performed",
             ExchangeEvent::SystemStatus { .. } => "system_status",
@@ -128,23 +148,63 @@ impl ExchangeEvent {
     }
 
     /// Returns the user ID associated with the event, if any
-    pub fn user_id(&self) -> Option<u64> {
+    pub fn user_id(&self) -> Option<UserId> {
         match self {
             ExchangeEvent::OrderPlaced { user_id, .. }
             | ExchangeEvent::OrderCancelled { user_id, .. }
             | ExchangeEvent::DepositConfirmed { user_id, .. }
             | ExchangeEvent::WithdrawalProcessed { user_id, .. }
-            | ExchangeEvent::BalanceUpdated { user_id, .. }
+            | ExchangeEvent::BalanceChanged { user_id, .. }
+            | ExchangeEvent::PositionChanged { user_id, .. }
+            | ExchangeEvent::RiskLimitBreached { user_id, .. }
             | ExchangeEvent::AccountCreated { user_id, .. }
             | ExchangeEvent::RiskCheckPerformed { user_id, .. } => Some(*user_id),
 
             ExchangeEvent::TradeExecuted {
                 maker_user_id,
-                taker_user_id,
+                taker_user_id: _,
                 ..
             } => Some(*maker_user_id), // Return maker user ID
 
             ExchangeEvent::SystemStatus { .. } => None,
+        }
+    }
+
+    /// Returns the trading pair associated with the event, if any
+    pub fn trading_pair(&self) -> Option<&str> {
+        match self {
+            ExchangeEvent::OrderPlaced { pair, .. }
+            | ExchangeEvent::TradeExecuted { pair, .. } => Some(pair),
+            _ => None,
+        }
+    }
+
+    /// Returns the order ID associated with the event, if any
+    pub fn order_id(&self) -> Option<crate::types::OrderId> {
+        match self {
+            ExchangeEvent::OrderPlaced { order_id, .. }
+            | ExchangeEvent::OrderCancelled { order_id, .. }
+            | ExchangeEvent::RiskCheckPerformed { order_id, .. } => Some(*order_id),
+            _ => None,
+        }
+    }
+
+    /// Returns the trade ID associated with the event, if any
+    pub fn trade_id(&self) -> Option<&str> {
+        match self {
+            ExchangeEvent::TradeExecuted { trade_id, .. } => Some(trade_id),
+            _ => None,
+        }
+    }
+
+    /// Returns the asset associated with the event, if any
+    pub fn asset(&self) -> Option<&Asset> {
+        match self {
+            ExchangeEvent::DepositConfirmed { asset, .. }
+            | ExchangeEvent::WithdrawalProcessed { asset, .. }
+            | ExchangeEvent::BalanceChanged { asset, .. }
+            | ExchangeEvent::PositionChanged { asset, .. } => Some(asset),
+            _ => None,
         }
     }
 }
@@ -156,9 +216,16 @@ pub trait EventListener: Send + Sync {
 }
 
 /// In-memory event bus
-#[derive(Debug, Default)]
 pub struct EventBus {
     listeners: Vec<Box<dyn EventListener>>,
+}
+
+impl Default for EventBus {
+    fn default() -> Self {
+        Self {
+            listeners: Vec::new(),
+        }
+    }
 }
 
 impl EventBus {

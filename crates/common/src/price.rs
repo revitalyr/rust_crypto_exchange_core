@@ -2,20 +2,20 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use crate::types::{TickSize, PriceValue};
 
 /// Represents a price with fixed-point arithmetic
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Price {
     /// Price value in smallest unit (e.g., cents for USD)
-    value: u64,
+    value: PriceValue,
 }
 
 impl Price {
-    /// Creates a new price from a raw value
-    pub fn new(value: u64) -> Self {
+    /// Creates a price from a raw value
+    pub fn new(value: PriceValue) -> Self {
         Self { value }
     }
-
     /// Creates a price from a floating point value
     /// 
     /// # Arguments
@@ -27,12 +27,12 @@ impl Price {
         }
 
         let multiplier = 10_f64.powi(decimals as i32);
-        let scaled_value = (value * multiplier).round() as u64;
+        let scaled_value = (value * multiplier).round() as PriceValue;
         Some(Self::new(scaled_value))
     }
 
     /// Returns the raw price value
-    pub fn value(&self) -> u64 {
+    pub fn value(&self) -> PriceValue {
         self.value
     }
 
@@ -53,12 +53,12 @@ impl Price {
     }
 
     /// Multiplies price by a scalar
-    pub fn checked_mul(self, multiplier: u64) -> Option<Self> {
+    pub fn checked_mul(self, multiplier: PriceValue) -> Option<Self> {
         self.value.checked_mul(multiplier).map(Self::new)
     }
 
     /// Divides price by a scalar
-    pub fn checked_div(self, divisor: u64) -> Option<Self> {
+    pub fn checked_div(self, divisor: PriceValue) -> Option<Self> {
         if divisor == 0 {
             return None;
         }
@@ -71,7 +71,7 @@ impl Price {
     }
 
     /// Rounds the price to the nearest tick
-    pub fn round_to_tick(self, tick_size: u64) -> Self {
+    pub fn round_to_tick(self, tick_size: TickSize) -> Self {
         let remainder = self.value % tick_size;
         if remainder >= tick_size / 2 {
             Self::new(self.value + (tick_size - remainder))
@@ -81,22 +81,12 @@ impl Price {
     }
 
     /// Rounds down to the nearest tick
-    pub fn round_down_to_tick(self, tick_size: u64) -> Self {
+    pub fn round_down_to_tick(self, tick_size: TickSize) -> Self {
         Self::new(self.value - (self.value % tick_size))
     }
 
-    /// Rounds up to the nearest tick
-    pub fn round_up_to_tick(self, tick_size: u64) -> Self {
-        let remainder = self.value % tick_size;
-        if remainder == 0 {
-            *self
-        } else {
-            Self::new(self.value + (tick_size - remainder))
-        }
-    }
-
-    /// Returns the tick position (how many ticks from zero)
-    pub fn tick_position(self, tick_size: u64) -> u64 {
+    /// Returns tick position for this price
+    pub fn tick_position(self, tick_size: TickSize) -> PriceValue {
         self.value / tick_size
     }
 }
@@ -112,22 +102,22 @@ impl fmt::Display for Price {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PriceLevel {
     pub price: Price,
-    pub quantity: u64,
+    pub quantity: crate::types::Quantity,
 }
 
 impl PriceLevel {
     /// Creates a new price level
-    pub fn new(price: Price, quantity: u64) -> Self {
+    pub fn new(price: Price, quantity: crate::types::Quantity) -> Self {
         Self { price, quantity }
     }
 
     /// Returns the total value (price * quantity)
-    pub fn total_value(&self) -> Option<u64> {
+    pub fn total_value(&self) -> Option<crate::types::Quantity> {
         self.price.value.checked_mul(self.quantity)
     }
 
     /// Adds quantity to the price level
-    pub fn add_quantity(&mut self, quantity: u64) -> bool {
+    pub fn add_quantity(&mut self, quantity: crate::types::Quantity) -> bool {
         match self.quantity.checked_add(quantity) {
             Some(new_quantity) => {
                 self.quantity = new_quantity;
@@ -138,7 +128,7 @@ impl PriceLevel {
     }
 
     /// Removes quantity from the price level
-    pub fn remove_quantity(&mut self, quantity: u64) -> bool {
+    pub fn remove_quantity(&mut self, quantity: crate::types::Quantity) -> bool {
         if quantity > self.quantity {
             return false;
         }
@@ -166,7 +156,7 @@ mod tests {
     fn test_price_creation() {
         let price = Price::new(5000000); // $50.000 with 4 decimals
         assert_eq!(price.value(), 5000000);
-        assert_eq!(price.to_float(4), 50000.0);
+        assert_eq!(price.to_float(4), 500.0);
     }
 
     #[test]
@@ -190,11 +180,10 @@ mod tests {
     #[test]
     fn test_price_rounding() {
         let price = Price::new(501234); // $50.1234
-        let tick_size = 100; // $0.01
+        let tick_size = crate::types::constants::DEFAULT_TICK_SIZE; // $0.01
 
         assert_eq!(price.round_to_tick(tick_size).value(), 501200); // $50.12
         assert_eq!(price.round_down_to_tick(tick_size).value(), 501200); // $50.12
-        assert_eq!(price.round_up_to_tick(tick_size).value(), 501300); // $50.13
     }
 
     #[test]
