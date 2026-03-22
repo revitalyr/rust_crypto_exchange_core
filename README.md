@@ -44,18 +44,17 @@ This is a **production-ready cryptocurrency exchange core** built in Rust, desig
 
 ## ⚡ Performance
 
-### Benchmarks (Test Environment)
+### Architecture Optimizations
 
-| Metric | Value | Target |
-|---------|--------|--------|
-| **Order Throughput** | 100,000+ orders/sec | 50,000+ |
-| **Order Latency p99** | < 100 μs | < 200 μs |
-| **Trade Latency p99** | < 50 μs | < 100 μs |
-| **Order Book Operations** | O(1) | O(1) |
-| **Memory Usage** | < 1GB (10M orders) | < 2GB |
-| **Recovery Time** | < 5s (1M events) | < 30s |
+This implementation is designed for high-frequency trading with enterprise-grade performance characteristics:
 
-### Latency Engineering
+- **Single-threaded matching engine** eliminates lock contention
+- **O(1) order book operations** with intrusive data structures  
+- **Zero-copy event processing** in critical paths
+- **HDR histogram tracking** for accurate latency measurements
+- **Memory-efficient storage** with slab-based allocation
+
+### Performance Engineering
 
 ```rust
 // Sub-millisecond latency tracking
