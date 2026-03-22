@@ -1,0 +1,8 @@
+/target
+Cargo.lock
+justfile
+*.pyc
+__pycache__/
+.DS_Store
+.vscode/
+.idea/
