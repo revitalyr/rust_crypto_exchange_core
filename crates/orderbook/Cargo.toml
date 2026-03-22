@@ -13,4 +13,6 @@ uuid.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 chrono.workspace = true
+crossbeam = "0.8"
+parking_lot = "0.12"
 

@@ -28,6 +28,179 @@ pub enum MatchingEngineCommand {
     GetOrderStatus { order_id: u64 },
 }
 
+/// Order index for O(1) order lookup
+#[derive(Debug, Clone)]
+pub struct OrderIndex {
+    /// Order ID -> (price, side, remaining_quantity)
+    orders: std::collections::HashMap<u64, (Price, OrderSide, u64)>,
+}
+
+impl OrderIndex {
+    /// Create new order index
+    pub fn new() -> Self {
+        Self {
+            orders: std::collections::HashMap::new(),
+        }
+    }
+    
+    /// Insert order
+    pub fn insert(&mut self, order_id: u64, price: Price, side: OrderSide, quantity: u64) {
+        self.orders.insert(order_id, (price, side, quantity));
+    }
+    
+    /// Remove order
+    pub fn remove(&mut self, order_id: u64) -> Option<(Price, OrderSide, u64)> {
+        self.orders.remove(&order_id)
+    }
+    
+    /// Get order info
+    pub fn get(&self, order_id: u64) -> Option<(Price, OrderSide, u64)> {
+        self.orders.get(&order_id).copied()
+    }
+    
+    /// Update order quantity
+    pub fn update_quantity(&mut self, order_id: u64, new_quantity: u64) -> bool {
+        if let Some((price, side, _)) = self.orders.get_mut(&order_id) {
+            *self.orders.get_mut(&order_id).unwrap() = (*price, *side, new_quantity);
+            true
+        } else {
+            false
+        }
+    }
+    
+    /// Clear all orders
+    pub fn clear(&mut self) {
+        self.orders.clear();
+    }
+    
+    /// Get order count
+    pub fn len(&self) -> usize {
+        self.orders.len()
+    }
+}
+
+/// Best bid/ask cache for O(1) best price lookup
+#[derive(Debug, Clone)]
+pub struct BestPriceCache {
+    /// Best bid price
+    best_bid: Option<Price>,
+    /// Best ask price
+    best_ask: Option<Price>,
+}
+
+impl BestPriceCache {
+    /// Create new cache
+    pub fn new() -> Self {
+        Self {
+            best_bid: None,
+            best_ask: None,
+        }
+    }
+    
+    /// Update best bid
+    pub fn update_best_bid(&mut self, price: Price) {
+        match self.best_bid {
+            Some(best) if price > best => self.best_bid = Some(price),
+            None => self.best_bid = Some(price),
+            _ => {}
+        }
+    }
+    
+    /// Update best ask
+    pub fn update_best_ask(&mut self, price: Price) {
+        match self.best_ask {
+            Some(best) if price < best => self.best_ask = Some(price),
+            None => self.best_ask = Some(price),
+            _ => {}
+        }
+    }
+    
+    /// Get best bid
+    pub fn best_bid(&self) -> Option<Price> {
+        self.best_bid
+    }
+    
+    /// Get best ask
+    pub fn best_ask(&self) -> Option<Price> {
+        self.best_ask
+    }
+    
+    /// Get spread
+    pub fn spread(&self) -> Option<Price> {
+        match (self.best_bid, self.best_ask) {
+            (Some(bid), Some(ask)) => ask.checked_sub(bid),
+            _ => None,
+        }
+    }
+    
+    /// Clear cache
+    pub fn clear(&mut self) {
+        self.best_bid = None;
+        self.best_ask = None;
+    }
+}
+
+/// Partial fill tracking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartialFillState {
+    /// Original order quantity
+    pub original_quantity: u64,
+    /// Filled quantity
+    pub filled_quantity: u64,
+    /// Remaining quantity
+    pub remaining_quantity: u64,
+    /// Number of fills
+    pub fill_count: u32,
+    /// Average fill price
+    pub avg_fill_price: Option<Price>,
+}
+
+impl PartialFillState {
+    /// Create new partial fill state
+    pub fn new(original_quantity: u64) -> Self {
+        Self {
+            original_quantity,
+            filled_quantity: 0,
+            remaining_quantity: original_quantity,
+            fill_count: 0,
+            avg_fill_price: None,
+        }
+    }
+    
+    /// Add fill
+    pub fn add_fill(&mut self, fill_quantity: u64, fill_price: Price) {
+        self.filled_quantity += fill_quantity;
+        self.remaining_quantity -= fill_quantity;
+        self.fill_count += 1;
+        
+        // Update average fill price
+        match self.avg_fill_price {
+            Some(avg) => {
+                // Weighted average
+                let total_value = avg.value() as u128 * (self.filled_quantity - fill_quantity) as u128;
+                let fill_value = fill_price.value() as u128 * fill_quantity as u128;
+                let new_avg = ((total_value + fill_value) / self.filled_quantity as u128) as u64;
+                self.avg_fill_price = Some(Price::new(new_avg));
+            }
+            None => self.avg_fill_price = Some(fill_price),
+        }
+    }
+    
+    /// Check if fully filled
+    pub fn is_fully_filled(&self) -> bool {
+        self.remaining_quantity == 0
+    }
+    
+    /// Get fill percentage
+    pub fn fill_percentage(&self) -> f64 {
+        if self.original_quantity == 0 {
+            0.0
+        } else {
+            (self.filled_quantity as f64) / (self.original_quantity as f64) * 100.0
+        }
+    }
+}
+
 /// Matching engine response types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MatchingEngineResponse {
@@ -421,10 +594,10 @@ impl MatchingEngineEvent {
             }
             MatchingEngineEvent::TradeExecuted(exec) => {
                 ExchangeEvent::TradeExecuted {
-                    trade_id: exec.trade_id,
+                    trade_id: exec.trade_id.to_string(),
                     maker_order_id: exec.maker_order_id,
                     taker_order_id: exec.taker_order_id,
-                    price: exec.price,
+                    price: exec.price.value(),
                     quantity: exec.quantity,
                     maker_user_id: exec.maker_user_id,
                     taker_user_id: exec.taker_user_id,

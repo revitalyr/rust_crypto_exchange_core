@@ -4,6 +4,12 @@ members = [
     "crates/orderbook", 
     "crates/matching_engine",
     "crates/api_gateway",
+    "crates/custody",
+    "crates/blockchain",
+    "crates/events",
+    "crates/persistence",
+    "crates/latency",
+    "crates/simulation",
     "clients/desktop",
 ]
 resolver = "2"

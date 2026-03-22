@@ -1,5 +1,6 @@
 /target
 Cargo.lock
+CLAUDE.md
 justfile
 *.pyc
 __pycache__/
